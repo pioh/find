@@ -10,7 +10,7 @@ import (
 	"github.com/enriquebris/goconcurrentqueue"
 )
 
-const parallel = 16
+const parallel = 2
 
 var queue = goconcurrentqueue.NewFIFO()
 
@@ -27,7 +27,7 @@ func main() {
 	queue.Enqueue(target)
 
 	for i := 0; i < parallel; i++ {
-		wout[i] = bufio.NewWriterSize(os.Stdout, 1024*1024*16)
+		wout[i] = bufio.NewWriterSize(os.Stdout, 1024*1024)
 		werr[i] = bufio.NewWriter(os.Stderr)
 		go worker(ctx, wout[i], werr[i])
 	}
