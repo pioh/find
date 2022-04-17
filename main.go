@@ -2,55 +2,32 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"flag"
 	"os"
-	"sync"
-
-	"github.com/enriquebris/goconcurrentqueue"
 )
 
-const parallel = 2
-
-var queue = goconcurrentqueue.NewFIFO()
-
-var wg sync.WaitGroup
+var queue = &Stack{}
 
 func main() {
 	flag.Parse()
 	target := flag.Arg(0)
 
-	var wout [parallel]*bufio.Writer
-	var werr [parallel]*bufio.Writer
-	ctx, cancel := context.WithCancel(context.Background())
-	wg.Add(1)
-	queue.Enqueue(target)
+	var wout *bufio.Writer
+	var werr *bufio.Writer
 
-	for i := 0; i < parallel; i++ {
-		wout[i] = bufio.NewWriterSize(os.Stdout, 1024*1024)
-		werr[i] = bufio.NewWriter(os.Stderr)
-		go worker(ctx, wout[i], werr[i])
-	}
-	wg.Wait()
-	cancel()
-	for i := 0; i < parallel; i++ {
-		wout[i].Flush()
-		werr[i].Flush()
-	}
-}
+	queue.Push(target)
 
-func worker(ctx context.Context, wout *bufio.Writer, werr *bufio.Writer) {
-	for {
-		item, err := queue.DequeueOrWaitForNextElementContext(ctx)
-		if err != nil {
-			break
-		}
-		read(item.(string), wout, werr)
+	wout = bufio.NewWriterSize(os.Stdout, 1024*1024)
+	werr = bufio.NewWriter(os.Stderr)
+	defer wout.Flush()
+	defer werr.Flush()
+
+	for queue.Size() > 0 {
+		read(queue.Pop(), wout, werr)
 	}
 }
 
 func read(path string, wout *bufio.Writer, werr *bufio.Writer) {
-	defer wg.Done()
 	file, err := os.Open(path)
 	if err != nil {
 		werr.WriteString(path + " failed: " + err.Error() + "\n")
@@ -66,10 +43,27 @@ func read(path string, wout *bufio.Writer, werr *bufio.Writer) {
 	for _, item := range items {
 		subpath := path + item.Name()
 		if item.IsDir() {
-			wg.Add(1)
-			queue.Enqueue(subpath + "/")
+			queue.Push(subpath + "/")
 		} else {
 			wout.WriteString(subpath + "\n")
 		}
 	}
+}
+
+type Stack struct {
+	buf []string
+}
+
+func (s *Stack) Push(item string) {
+	s.buf = append(s.buf, item)
+}
+func (s *Stack) Pop() string {
+	n := len(s.buf) - 1
+	item := s.buf[n]
+	s.buf = s.buf[:n]
+	return item
+}
+
+func (s *Stack) Size() int {
+	return len(s.buf)
 }
