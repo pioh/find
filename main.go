@@ -17,7 +17,7 @@ func main() {
 
 	queue.Push(target)
 
-	wout = bufio.NewWriterSize(os.Stdout, 1024*1024)
+	wout = bufio.NewWriterSize(os.Stdout, 4*1024)
 	werr = bufio.NewWriter(os.Stderr)
 	defer wout.Flush()
 	defer werr.Flush()
