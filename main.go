@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"flag"
+	"log"
 	"os"
 )
 
@@ -29,6 +30,7 @@ func main() {
 
 func read(path string, wout *bufio.Writer, werr *bufio.Writer) {
 	file, err := os.Open(path)
+	log.Println(path)
 	if err != nil {
 		werr.WriteString(path + " failed: " + err.Error() + "\n")
 		return
